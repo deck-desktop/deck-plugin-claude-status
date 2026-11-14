@@ -10,7 +10,8 @@ const IN = "chat";
 export const settings = [
   { in: IN, key: "branch", title: "Branch", desc: "The git branch of Claude's folder, to switch or commit.", default: true },
   { in: IN, key: "lines", title: "Lines changed", desc: "Lines Claude added and removed in the session.", default: true },
-  { in: IN, key: "usage", title: "Usage and cost", desc: "How much of a usage limit is used, and what the session has cost.", default: true },
+  { in: IN, key: "usage", title: "Usage limit", desc: "How much of a usage limit is used.", default: true },
+  { in: IN, key: "cost", title: "Cost", desc: "What the session has cost so far.", default: true },
   { in: IN, key: "limit", title: "Usage limit shown", desc: "The other one is in the band the chip opens.",
     choices: [["five_hour", "Five-hour session"], ["seven_day", "Weekly"]], default: "five_hour" },
   { in: IN, key: "time", title: "Session time", desc: "How long the session has run; a click copies the command that resumes it.", default: true },

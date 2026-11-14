@@ -51,11 +51,14 @@ export function ChatChips({ pane }: { pane: string }) {
           <span style={{ color: "#4ade80" }}>+{added}</span><span style={{ color: "#f87171" }}>−{removed}</span>
         </ChatChip>
       )}
-      {cfg.usage && (limit?.used_percentage != null || c?.total_cost_usd != null) && (
-        <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="Your usage limits and this session's cost">
-          {limit?.used_percentage != null && <span><span className="text-text-muted">{cfg.limit === "five_hour" ? "5h " : "Week "}</span><span style={{ color: tone(limit.used_percentage) }}>{limit.used_percentage}%</span></span>}
-          {c?.total_cost_usd != null && <span>{usd(c.total_cost_usd)}</span>}
+      {cfg.usage && limit?.used_percentage != null && (
+        <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="Your usage limits: click for both, and when they reset">
+          <span className="text-text-muted">{cfg.limit === "five_hour" ? "5h" : "Week"}</span>
+          <span style={{ color: tone(limit.used_percentage) }}>{limit.used_percentage}%</span>
         </ChatChip>
+      )}
+      {cfg.cost && c?.total_cost_usd != null && (
+        <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="What this session has cost so far">{usd(c.total_cost_usd)}</ChatChip>
       )}
       {cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
       {cfg.phone && <ChatIconButton onClick={() => void snapPhone(pane)} disabled={s.busy === "capture"} aria-label="Capture the phone's screen" title="Capture the connected phone's screen into the message"><Smartphone size={13} /></ChatIconButton>}
