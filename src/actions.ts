@@ -6,6 +6,7 @@ import { notify } from "deck-plugin-sdk/ui";
 import { captureLabel, captureName, encodePs, quote } from "./format";
 import { SNIP_PS } from "./snip";
 import { patch, stateOf } from "./store";
+import { getSettings } from "./settings";
 
 const source = "Claude status";
 const notice = (title: string) => void notify({ kind: "activity", source, title, transient: true });
@@ -13,8 +14,8 @@ const failure = (title: string, body?: string) => void notify({ kind: "error", s
 
 // ---- captures -----------------------------------------------------------------------------------
 
-/** Captures are kept in the plugin's own folder for a day, never in the user's Screenshots. */
-const KEEP_MS = 24 * 60 * 60 * 1000;
+/** Captures are kept in the plugin's own folder (never the user's Screenshots), for as many days as its setting says. */
+const keepMs = () => Number(getSettings().keep) * 24 * 60 * 60 * 1000;
 const capturesDir = async () => `${await dataDir()}\\captures`;
 
 const powershell = (script: string) =>
@@ -64,10 +65,10 @@ export const snip = (pane: string) => capturing(pane, async () => {
 });
 
 export interface Capture { path: string; label: string }
-/** The latest captures, newest first; older than a day are deleted on the way. */
+/** The latest captures, newest first; ones older than the setting keeps are deleted on the way. */
 export async function captures(): Promise<Capture[]> {
   const files = await fsList(await capturesDir()).catch(() => []);
-  const now = Date.now();
+  const now = Date.now(), KEEP_MS = keepMs();
   for (const f of files) {
     if (!f.dir && captureLabel(f.name) && now - f.mtimeMs > KEEP_MS) void fsDelete(f.path).catch((e) => console.warn("[chat-status] removing an old capture failed", e));
   }
@@ -85,7 +86,7 @@ Remove filler and false starts ("uh", "okay so", repeated phrases) and fix obvio
 If the draft asks several things, put them in a short numbered list; otherwise keep it as one or two short paragraphs.
 Write in the same language as the draft. Output only the rewritten prompt.`;
 
-/** Rewrites the draft in the message box with Claude (Sonnet), in place; nothing is sent. */
+/** Rewrites the draft in the message box with Claude (the model its setting names), in place; nothing is sent. */
 export async function tidy(pane: string, cwd: string) {
   const draft = getBox(pane).text;
   if (!draft.trim() || stateOf(pane).busy) return;
@@ -96,7 +97,7 @@ export async function tidy(pane: string, cwd: string) {
     // out the user's CLAUDE.md, hooks and plugins, which would add to its instructions; no tools,
     // and no session left behind in /resume. Given up on after 90 s, so a hung run frees the chips.
     const r = await Promise.race([
-      exec(isWindows() ? "claude.exe" : "claude", ["-p", "--safe-mode", "--model", "sonnet", "--system-prompt", TIDY_SYSTEM,
+      exec(isWindows() ? "claude.exe" : "claude", ["-p", "--safe-mode", "--model", getSettings().tidyModel, "--system-prompt", TIDY_SYSTEM,
         "--tools", "", "--no-session-persistence", "--", draft], cwd),
       new Promise<never>((_, no) => setTimeout(() => no(new Error("no answer in 90 seconds")), 90_000)),
     ]);

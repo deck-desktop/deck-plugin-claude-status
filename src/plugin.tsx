@@ -9,6 +9,10 @@ import { ChatChip, ChatIconButton, notify } from "deck-plugin-sdk/ui";
 import { branchOf, captures, recentBranches, snapPhone, snip, switchBranch, tidy, untidy, type Capture } from "./actions";
 import { duration, quote, resets, tone, usd } from "./format";
 import { patch, toggleBand, usePaneState } from "./store";
+import { useSettings } from "./settings";
+
+// Its settings, drawn by Deck on its page of Settings; dispose stops their listener before a reload.
+export { dispose, settings } from "./settings";
 
 /** The parts of the status line read here (Claude Code writes more; see chat.claude). */
 interface Limit { used_percentage?: number; resets_at?: number | string }
@@ -27,9 +31,10 @@ function useBranch(cwd: string, working: boolean): string | null {
 }
 
 export function ChatChips({ pane }: { pane: string }) {
-  const chat = useChat(pane), s = usePaneState(pane), box = useBox(pane);
-  const branch = useBranch(chat.cwd, chat.working);
-  const c = cost(chat), five = limits(chat)?.five_hour;
+  const chat = useChat(pane), s = usePaneState(pane), box = useBox(pane), cfg = useSettings();
+  // No git run at all while the branch chip is off.
+  const branch = useBranch(cfg.branch ? chat.cwd : "", chat.working);
+  const c = cost(chat), limit = limits(chat)?.[cfg.limit];
   const added = c?.total_lines_added ?? 0, removed = c?.total_lines_removed ?? 0;
   const copyResume = () => {
     const id = chat.claude?.session_id;
@@ -37,28 +42,29 @@ export function ChatChips({ pane }: { pane: string }) {
       .then(() => notify({ kind: "activity", source: "Claude status", title: "Copied the command that resumes this session", transient: true }))
       .catch((e) => console.warn("[chat-status] copying failed", e));
   };
+  const capturing = cfg.phone || (cfg.snip && isWindows());
   return (
     <>
-      {branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
-      {(added > 0 || removed > 0) && (
+      {cfg.branch && branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
+      {cfg.lines && (added > 0 || removed > 0) && (
         <ChatChip active={s.band === "changes"} onClick={() => toggleBand(pane, "changes")} title="Lines Claude changed in this session. Click to ask Claude to review or commit your uncommitted changes">
           <span style={{ color: "#4ade80" }}>+{added}</span><span style={{ color: "#f87171" }}>−{removed}</span>
         </ChatChip>
       )}
-      {(five?.used_percentage != null || c?.total_cost_usd != null) && (
+      {cfg.usage && (limit?.used_percentage != null || c?.total_cost_usd != null) && (
         <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="Your usage limits and this session's cost">
-          {five?.used_percentage != null && <span><span className="text-text-muted">5h </span><span style={{ color: tone(five.used_percentage) }}>{five.used_percentage}%</span></span>}
+          {limit?.used_percentage != null && <span><span className="text-text-muted">{cfg.limit === "five_hour" ? "5h " : "Week "}</span><span style={{ color: tone(limit.used_percentage) }}>{limit.used_percentage}%</span></span>}
           {c?.total_cost_usd != null && <span>{usd(c.total_cost_usd)}</span>}
         </ChatChip>
       )}
-      {c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
-      <ChatIconButton onClick={() => void snapPhone(pane)} disabled={s.busy === "capture"} aria-label="Capture the phone's screen" title="Capture the connected phone's screen into the message"><Smartphone size={13} /></ChatIconButton>
-      {isWindows() && <ChatIconButton onClick={() => void snip(pane)} disabled={s.busy === "capture"} aria-label="Snip the screen" title="Snip part of the screen into the message"><Scissors size={13} /></ChatIconButton>}
-      <ChatIconButton onClick={() => toggleBand(pane, "captures")} aria-label="Recent captures" aria-pressed={s.band === "captures"} title="Recent captures, to add one again"><Images size={13} /></ChatIconButton>
-      {s.busy === "tidy"
+      {cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
+      {cfg.phone && <ChatIconButton onClick={() => void snapPhone(pane)} disabled={s.busy === "capture"} aria-label="Capture the phone's screen" title="Capture the connected phone's screen into the message"><Smartphone size={13} /></ChatIconButton>}
+      {cfg.snip && isWindows() && <ChatIconButton onClick={() => void snip(pane)} disabled={s.busy === "capture"} aria-label="Snip the screen" title="Snip part of the screen into the message"><Scissors size={13} /></ChatIconButton>}
+      {capturing && <ChatIconButton onClick={() => toggleBand(pane, "captures")} aria-label="Recent captures" aria-pressed={s.band === "captures"} title="Recent captures, to add one again"><Images size={13} /></ChatIconButton>}
+      {cfg.tidy && (s.busy === "tidy"
         ? <ChatIconButton disabled aria-label="Tidying" title="Tidying the draft…"><Loader2 size={13} className="animate-spin" /></ChatIconButton>
-        : <ChatIconButton onClick={() => void tidy(pane, chat.cwd)} disabled={!box.text.trim()} aria-label="Tidy the draft" title="Tidy the draft with Claude: clearer, nothing added, not sent"><WandSparkles size={13} /></ChatIconButton>}
-      {s.tidy && box.text === s.tidy.tidied && <ChatIconButton onClick={() => untidy(pane)} aria-label="Undo the tidy" title="Put the draft from before the tidy back"><Undo2 size={13} /></ChatIconButton>}
+        : <ChatIconButton onClick={() => void tidy(pane, chat.cwd)} disabled={!box.text.trim()} aria-label="Tidy the draft" title="Tidy the draft with Claude: clearer, nothing added, not sent"><WandSparkles size={13} /></ChatIconButton>)}
+      {cfg.tidy && s.tidy && box.text === s.tidy.tidied && <ChatIconButton onClick={() => untidy(pane)} aria-label="Undo the tidy" title="Put the draft from before the tidy back"><Undo2 size={13} /></ChatIconButton>}
     </>
   );
 }
@@ -95,7 +101,7 @@ function Captures({ pane }: { pane: string }) {
   const [list, setList] = useState<Capture[] | null>(null);
   useEffect(() => { void captures().then(setList).catch((e) => { console.warn("[chat-status] listing captures failed", e); setList([]); }); }, []);
   if (!list) return <span className="text-text-muted">Loading…</span>;
-  if (!list.length) return <span className="text-text-muted">No captures in the last day. Capture the phone's screen or snip this one with the buttons below.</span>;
+  if (!list.length) return <span className="text-text-muted">No recent captures. Capture the phone's screen or snip this one with the buttons below.</span>;
   return (
     <div className="flex flex-wrap gap-1.5">
       {list.map((c) => (
