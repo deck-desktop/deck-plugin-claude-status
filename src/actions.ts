@@ -1,6 +1,6 @@
 // What the chips do outside Deck: capture the phone's screen (adb) or a snip of this one into the
 // message box, tidy the draft with Claude (claude -p), and read or switch the git branch.
-import { dataDir, exec, fsDelete, fsList, isWindows } from "deck-plugin-sdk/bridge";
+import { dataDir, exec, fsCreateDir, fsDelete, fsList, isWindows } from "deck-plugin-sdk/bridge";
 import { getBox, insertInBox, setBox } from "deck-plugin-sdk/chat";
 import { notify } from "deck-plugin-sdk/ui";
 import { captureLabel, captureName, encodePs, quote } from "./format";
@@ -28,6 +28,8 @@ async function capturing(pane: string, run: () => Promise<string | null>) {
   try {
     const path = await run();
     if (path) insertInBox(pane, quote(path));
+    // Clears out the ones older than a day as it lists them.
+    void captures().catch(() => {});
   } catch (e) {
     console.warn("[chat-status] capture failed", e);
     failure("The capture failed", String(e));
@@ -43,7 +45,7 @@ export const snapPhone = (pane: string) => capturing(pane, async () => {
   const serial = devices.split("\n").map((l) => l.trim().split(/\s+/)).find(([s, state]) => s && state === "device")?.[0];
   if (!serial) { notice("No phone is connected"); return null; }
   const dir = await capturesDir(), out = `${dir}\\${captureName("phone", Date.now())}`, remote = "/sdcard/deck-snap.png";
-  await powershell(`New-Item -ItemType Directory -Force -Path ${psQuote(dir)} | Out-Null`);
+  await fsCreateDir(await dataDir(), "captures").catch(() => {}); // there already
   const shot = await exec("adb", ["-s", serial, "shell", "screencap", "-p", remote]);
   if (shot.code !== 0) { failure("The phone's screen could not be captured", shot.stderr.trim()); return null; }
   const pull = await exec("adb", ["-s", serial, "pull", remote, out]);
@@ -90,10 +92,14 @@ export async function tidy(pane: string, cwd: string) {
   patch(pane, { busy: "tidy" });
   try {
     // claude.exe by its file name, so the draft goes to it as one argument and never through
-    // cmd.exe. No tools, no hooks of the user's (they would add to its instructions), no session
-    // left behind in /resume.
-    const r = await exec(isWindows() ? "claude.exe" : "claude", ["-p", draft, "--model", "sonnet", "--system-prompt", TIDY_SYSTEM,
-      "--tools", "", "--no-session-persistence", "--settings", JSON.stringify({ disableAllHooks: true })], cwd);
+    // cmd.exe, after "--" so a draft starting with "-" is not read as an option. --safe-mode leaves
+    // out the user's CLAUDE.md, hooks and plugins, which would add to its instructions; no tools,
+    // and no session left behind in /resume. Given up on after 90 s, so a hung run frees the chips.
+    const r = await Promise.race([
+      exec(isWindows() ? "claude.exe" : "claude", ["-p", "--safe-mode", "--model", "sonnet", "--system-prompt", TIDY_SYSTEM,
+        "--tools", "", "--no-session-persistence", "--", draft], cwd),
+      new Promise<never>((_, no) => setTimeout(() => no(new Error("no answer in 90 seconds")), 90_000)),
+    ]);
     const tidied = r.stdout.trim();
     if (r.code !== 0 || !tidied) { failure("The draft could not be tidied", (r.stderr || r.stdout).trim().slice(0, 400)); return; }
     // Written over only if the draft is still what was sent: typing meanwhile wins.

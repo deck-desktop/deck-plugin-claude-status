@@ -41,7 +41,7 @@ export function ChatChips({ pane }: { pane: string }) {
     <>
       {branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
       {(added > 0 || removed > 0) && (
-        <ChatChip active={s.band === "changes"} onClick={() => toggleBand(pane, "changes")} title="Lines Claude changed in this session: review or commit them">
+        <ChatChip active={s.band === "changes"} onClick={() => toggleBand(pane, "changes")} title="Lines Claude changed in this session. Click to ask Claude to review or commit your uncommitted changes">
           <span style={{ color: "#4ade80" }}>+{added}</span><span style={{ color: "#f87171" }}>−{removed}</span>
         </ChatChip>
       )}
@@ -141,7 +141,7 @@ export function ChatBand({ pane }: { pane: string }) {
       {s.band === "branch" && (<><Head pane={pane} title="Branch" /><Branches pane={pane} cwd={chat.cwd} /></>)}
       {s.band === "changes" && (
         <>
-          <Head pane={pane} title="Changes in this session" />
+          <Head pane={pane} title="Uncommitted changes" />
           <div className="flex flex-wrap gap-1.5">
             <ChatChip onClick={() => ask("Review my uncommitted changes (git diff HEAD) for bugs and anything worth simplifying.")}>Ask Claude to review them</ChatChip>
             <ChatChip onClick={() => ask("Commit my uncommitted changes with a clear commit message.")}>Ask Claude to commit them</ChatChip>
