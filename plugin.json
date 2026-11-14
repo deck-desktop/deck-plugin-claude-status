@@ -4,8 +4,8 @@
   "description": "The branch, lines changed, usage limit, cost and time of a Claude chat's session, beside its message box.",
   "icon": "icon.svg",
   "color": "#fbbf24",
-  "version": "0.1.0",
-  "minDeck": "1.17.4",
+  "version": "1.0.0",
+  "minDeck": "1.18.0",
   "permissions": [
     "chat",
     "processes"
