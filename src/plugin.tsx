@@ -1,13 +1,12 @@
 // Claude status: what Claude Code's status line says about a chat's session, as chips in its message
-// box row (the branch, lines changed, the limits and cost, how long it has run), with captures and
-// a tidy for the draft beside them; and a band over the box with more on whichever chip was clicked.
+// box row (the branch, lines changed, the usage limit, the cost, how long it has run), and a band over
+// the box with more on whichever chip was clicked.
 import { useEffect, useState } from "react";
-import { GitBranch, Images, Loader2, Scissors, Smartphone, Undo2, WandSparkles, X } from "lucide-react";
-import { isWindows, openFile } from "deck-plugin-sdk/bridge";
-import { insertInBox, send, useBox, useChat, type Chat } from "deck-plugin-sdk/chat";
-import { ChatChip, ChatIconButton, notify } from "deck-plugin-sdk/ui";
-import { branchOf, captures, recentBranches, snapPhone, snip, switchBranch, tidy, untidy, type Capture } from "./actions";
-import { duration, quote, resets, tone, usd } from "./format";
+import { GitBranch, X } from "lucide-react";
+import { send, useChat, type Chat } from "deck-plugin-sdk/chat";
+import { ChatChip, notify } from "deck-plugin-sdk/ui";
+import { branchOf, recentBranches, switchBranch } from "./actions";
+import { duration, resets, tone, usd } from "./format";
 import { patch, toggleBand, usePaneState } from "./store";
 import { useSettings } from "./settings";
 
@@ -30,16 +29,16 @@ function useBranch(cwd: string, working: boolean): string | null {
   return branch;
 }
 
-/** The row's two ends (Deck's ChatChips and ChatChipsEnd): the figures and the buttons each sit at
- *  the end their setting names. */
+/** The row's two ends (Deck's ChatChips and ChatChipsEnd): the chips sit at the one their setting names. */
 export const ChatChips = ({ pane }: { pane: string }) => <Chips pane={pane} end={false} />;
 export const ChatChipsEnd = ({ pane }: { pane: string }) => <Chips pane={pane} end />;
 
 function Chips({ pane, end }: { pane: string; end: boolean }) {
-  const chat = useChat(pane), s = usePaneState(pane), box = useBox(pane), cfg = useSettings();
-  const figures = (cfg.figuresAt === "end") === end, buttons = (cfg.buttonsAt === "end") === end;
+  const chat = useChat(pane), s = usePaneState(pane), cfg = useSettings();
+  const here = (cfg.at === "end") === end;
   // No git run at all where the branch chip is not shown.
-  const branch = useBranch(figures && cfg.branch ? chat.cwd : "", chat.working);
+  const branch = useBranch(here && cfg.branch ? chat.cwd : "", chat.working);
+  if (!here) return null;
   const c = cost(chat), limit = limits(chat)?.[cfg.limit];
   const added = c?.total_lines_added ?? 0, removed = c?.total_lines_removed ?? 0;
   const copyResume = () => {
@@ -48,32 +47,24 @@ function Chips({ pane, end }: { pane: string; end: boolean }) {
       .then(() => notify({ kind: "activity", source: "Claude status", title: "Copied the command that resumes this session", transient: true }))
       .catch((e) => console.warn("[claude-status] copying failed", e));
   };
-  const capturing = cfg.phone || (cfg.snip && isWindows());
   return (
     <>
-      {figures && cfg.branch && branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
-      {figures && cfg.lines && (added > 0 || removed > 0) && (
+      {cfg.branch && branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
+      {cfg.lines && (added > 0 || removed > 0) && (
         <ChatChip active={s.band === "changes"} onClick={() => toggleBand(pane, "changes")} title="Lines Claude changed in this session. Click to ask Claude to review or commit your uncommitted changes">
           <span style={{ color: "#4ade80" }}>+{added}</span><span style={{ color: "#f87171" }}>−{removed}</span>
         </ChatChip>
       )}
-      {figures && cfg.usage && limit?.used_percentage != null && (
+      {cfg.usage && limit?.used_percentage != null && (
         <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="Your usage limits: click for both, and when they reset">
           <span className="text-text-muted">{cfg.limit === "five_hour" ? "5h" : "Week"}</span>
           <span style={{ color: tone(limit.used_percentage) }}>{limit.used_percentage}%</span>
         </ChatChip>
       )}
-      {figures && cfg.cost && c?.total_cost_usd != null && (
+      {cfg.cost && c?.total_cost_usd != null && (
         <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="What this session has cost so far">{usd(c.total_cost_usd)}</ChatChip>
       )}
-      {figures && cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
-      {buttons && cfg.phone && <ChatIconButton onClick={() => void snapPhone(pane)} disabled={s.busy === "capture"} aria-label="Capture the phone's screen" title="Capture the connected phone's screen into the message"><Smartphone size={13} /></ChatIconButton>}
-      {buttons && cfg.snip && isWindows() && <ChatIconButton onClick={() => void snip(pane)} disabled={s.busy === "capture"} aria-label="Snip the screen" title="Snip part of the screen into the message"><Scissors size={13} /></ChatIconButton>}
-      {buttons && capturing && <ChatIconButton onClick={() => toggleBand(pane, "captures")} aria-label="Recent captures" aria-pressed={s.band === "captures"} title="Recent captures, to add one again"><Images size={13} /></ChatIconButton>}
-      {buttons && cfg.tidy && (s.busy === "tidy"
-        ? <ChatIconButton disabled aria-label="Tidying" title="Tidying the draft…"><Loader2 size={13} className="animate-spin" /></ChatIconButton>
-        : <ChatIconButton onClick={() => void tidy(pane, chat.cwd)} disabled={!box.text.trim()} aria-label="Tidy the draft" title="Tidy the draft with Claude: clearer, nothing added, not sent"><WandSparkles size={13} /></ChatIconButton>)}
-      {buttons && cfg.tidy && s.tidy && box.text === s.tidy.tidied && <ChatIconButton onClick={() => untidy(pane)} aria-label="Undo the tidy" title="Put the draft from before the tidy back"><Undo2 size={13} /></ChatIconButton>}
+      {cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
     </>
   );
 }
@@ -102,23 +93,6 @@ function Bar({ name, limit, withDay }: { name: string; limit?: Limit; withDay: b
           {resets(limit?.resets_at, withDay) && <span className="text-text-muted">resets {resets(limit?.resets_at, withDay)}</span>}
         </>
       )}
-    </div>
-  );
-}
-
-function Captures({ pane }: { pane: string }) {
-  const [list, setList] = useState<Capture[] | null>(null);
-  useEffect(() => { void captures().then(setList).catch((e) => { console.warn("[claude-status] listing captures failed", e); setList([]); }); }, []);
-  if (!list) return <span className="text-text-muted">Loading…</span>;
-  if (!list.length) return <span className="text-text-muted">No recent captures. Capture the phone's screen or snip this one with the buttons below.</span>;
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {list.map((c) => (
-        <span key={c.path} className="flex items-center">
-          <ChatChip onClick={() => { insertInBox(pane, quote(c.path)); patch(pane, { band: null }); }} title={`Add to the message: ${c.path}`}>{c.label}</ChatChip>
-          <button onClick={() => void openFile(c.path).catch((e) => console.warn("[claude-status] opening a capture failed", e))} className="px-1.5 text-[11px] text-text-muted hover:text-text-primary" title="Open it">view</button>
-        </span>
-      ))}
     </div>
   );
 }
@@ -152,7 +126,6 @@ export function ChatBand({ pane }: { pane: string }) {
           {cost(chat)?.total_cost_usd != null && <span className="text-text-secondary">This session so far: {usd(cost(chat)!.total_cost_usd!)}</span>}
         </>
       )}
-      {s.band === "captures" && (<><Head pane={pane} title="Recent captures" /><Captures pane={pane} /></>)}
       {s.band === "branch" && (<><Head pane={pane} title="Branch" /><Branches pane={pane} cwd={chat.cwd} /></>)}
       {s.band === "changes" && (
         <>
