@@ -1,0 +1,139 @@
+// What the chips do outside Deck: capture the phone's screen (adb) or a snip of this one into the
+// message box, tidy the draft with Claude (claude -p), and read or switch the git branch.
+import { dataDir, exec, fsDelete, fsList, isWindows } from "deck-plugin-sdk/bridge";
+import { getBox, insertInBox, setBox } from "deck-plugin-sdk/chat";
+import { notify } from "deck-plugin-sdk/ui";
+import { captureLabel, captureName, encodePs, quote } from "./format";
+import { SNIP_PS } from "./snip";
+import { patch, stateOf } from "./store";
+
+const source = "Claude status";
+const notice = (title: string) => void notify({ kind: "activity", source, title, transient: true });
+const failure = (title: string, body?: string) => void notify({ kind: "error", source, title, body });
+
+// ---- captures -----------------------------------------------------------------------------------
+
+/** Captures are kept in the plugin's own folder for a day, never in the user's Screenshots. */
+const KEEP_MS = 24 * 60 * 60 * 1000;
+const capturesDir = async () => `${await dataDir()}\\captures`;
+
+const powershell = (script: string) =>
+  exec("powershell.exe", ["-NoProfile", "-STA", "-EncodedCommand", encodePs(`$ProgressPreference = "SilentlyContinue"\n${script}`)]);
+const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+/** One capture at a time, per chat: a second press while one runs does nothing. */
+async function capturing(pane: string, run: () => Promise<string | null>) {
+  if (stateOf(pane).busy) return;
+  patch(pane, { busy: "capture" });
+  try {
+    const path = await run();
+    if (path) insertInBox(pane, quote(path));
+  } catch (e) {
+    console.warn("[chat-status] capture failed", e);
+    failure("The capture failed", String(e));
+  } finally {
+    patch(pane, { busy: null });
+  }
+}
+
+/** The connected phone's screen: screencap on the device, pulled here, removed there. */
+export const snapPhone = (pane: string) => capturing(pane, async () => {
+  const devices = (await exec("adb", ["devices"]).catch(() => null))?.stdout;
+  if (devices == null) { failure("adb was not found", "Install Android's platform tools, or put adb on PATH."); return null; }
+  const serial = devices.split("\n").map((l) => l.trim().split(/\s+/)).find(([s, state]) => s && state === "device")?.[0];
+  if (!serial) { notice("No phone is connected"); return null; }
+  const dir = await capturesDir(), out = `${dir}\\${captureName("phone", Date.now())}`, remote = "/sdcard/deck-snap.png";
+  await powershell(`New-Item -ItemType Directory -Force -Path ${psQuote(dir)} | Out-Null`);
+  const shot = await exec("adb", ["-s", serial, "shell", "screencap", "-p", remote]);
+  if (shot.code !== 0) { failure("The phone's screen could not be captured", shot.stderr.trim()); return null; }
+  const pull = await exec("adb", ["-s", serial, "pull", remote, out]);
+  void exec("adb", ["-s", serial, "shell", "rm", remote]).catch(() => {});
+  if (pull.code !== 0) { failure("The capture could not be copied from the phone", pull.stderr.trim()); return null; }
+  return out;
+});
+
+/** A snip of this screen, through Windows' own overlay. */
+export const snip = (pane: string) => capturing(pane, async () => {
+  const out = `${await capturesDir()}\\${captureName("snip", Date.now())}`;
+  const ran = await powershell(`$out = ${psQuote(out)}\n${SNIP_PS}`);
+  if (ran.code === 0) return ran.stdout.trim() || out;
+  if (ran.code === 1) notice("No snip within 30 seconds");
+  return null;
+});
+
+export interface Capture { path: string; label: string }
+/** The latest captures, newest first; older than a day are deleted on the way. */
+export async function captures(): Promise<Capture[]> {
+  const files = await fsList(await capturesDir()).catch(() => []);
+  const now = Date.now();
+  for (const f of files) {
+    if (!f.dir && captureLabel(f.name) && now - f.mtimeMs > KEEP_MS) void fsDelete(f.path).catch((e) => console.warn("[chat-status] removing an old capture failed", e));
+  }
+  return files.filter((f) => !f.dir && captureLabel(f.name) && now - f.mtimeMs <= KEEP_MS)
+    .sort((a, b) => b.mtimeMs - a.mtimeMs).slice(0, 9)
+    .map((f) => ({ path: f.path, label: captureLabel(f.name)! }));
+}
+
+// ---- tidy -----------------------------------------------------------------------------------------
+
+const TIDY_SYSTEM = `You rewrite a developer's draft prompt for an AI coding assistant into a clear, well-structured request.
+Keep every requirement, detail, file name, path, error text, constraint and preference, and keep the developer's intent and first-person voice.
+Do not add new requirements, do not answer the request, and do not ask questions.
+Remove filler and false starts ("uh", "okay so", repeated phrases) and fix obvious speech-to-text mistakes.
+If the draft asks several things, put them in a short numbered list; otherwise keep it as one or two short paragraphs.
+Write in the same language as the draft. Output only the rewritten prompt.`;
+
+/** Rewrites the draft in the message box with Claude (Sonnet), in place; nothing is sent. */
+export async function tidy(pane: string, cwd: string) {
+  const draft = getBox(pane).text;
+  if (!draft.trim() || stateOf(pane).busy) return;
+  patch(pane, { busy: "tidy" });
+  try {
+    // claude.exe by its file name, so the draft goes to it as one argument and never through
+    // cmd.exe. No tools, no hooks of the user's (they would add to its instructions), no session
+    // left behind in /resume.
+    const r = await exec(isWindows() ? "claude.exe" : "claude", ["-p", draft, "--model", "sonnet", "--system-prompt", TIDY_SYSTEM,
+      "--tools", "", "--no-session-persistence", "--settings", JSON.stringify({ disableAllHooks: true })], cwd);
+    const tidied = r.stdout.trim();
+    if (r.code !== 0 || !tidied) { failure("The draft could not be tidied", (r.stderr || r.stdout).trim().slice(0, 400)); return; }
+    // Written over only if the draft is still what was sent: typing meanwhile wins.
+    if (getBox(pane).text !== draft) return;
+    setBox(pane, { text: tidied });
+    patch(pane, { tidy: { original: draft, tidied } });
+  } catch (e) {
+    console.warn("[chat-status] tidy failed", e);
+    failure("The draft could not be tidied", String(e));
+  } finally {
+    patch(pane, { busy: null });
+  }
+}
+
+/** Puts the draft from before the tidy back. */
+export function untidy(pane: string) {
+  const t = stateOf(pane).tidy;
+  if (t) setBox(pane, { text: t.original });
+  patch(pane, { tidy: null });
+}
+
+// ---- git ------------------------------------------------------------------------------------------
+
+/** The branch checked out in `cwd`, or null outside a repository (or on a detached HEAD). */
+export async function branchOf(cwd: string): Promise<string | null> {
+  const r = await exec("git", ["rev-parse", "--abbrev-ref", "HEAD"], cwd).catch(() => null);
+  const b = r?.code === 0 ? r.stdout.trim() : "";
+  return b && b !== "HEAD" ? b : null;
+}
+
+/** The most recently committed-to local branches, apart from `current`. */
+export async function recentBranches(cwd: string, current: string | null): Promise<string[]> {
+  const r = await exec("git", ["branch", "--sort=-committerdate", "--format=%(refname:short)"], cwd).catch(() => null);
+  return (r?.stdout ?? "").split("\n").map((b) => b.trim()).filter((b) => b && b !== current).slice(0, 6);
+}
+
+/** Switches branch; git itself refuses when uncommitted changes would be overwritten. */
+export async function switchBranch(cwd: string, to: string): Promise<boolean> {
+  const r = await exec("git", ["switch", to], cwd);
+  if (r.code === 0) notice(`Switched to ${to}`);
+  else failure(`Could not switch to ${to}`, r.stderr.trim().split("\n")[0]);
+  return r.code === 0;
+}

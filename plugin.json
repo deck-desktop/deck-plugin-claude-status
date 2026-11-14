@@ -1,0 +1,10 @@
+{
+  "id": "chat-status",
+  "name": "Claude status",
+  "description": "The branch, lines changed, usage limits, cost and time of a Claude chat, with screen captures and a tidy for your draft.",
+  "icon": "Gauge",
+  "color": "#fbbf24",
+  "version": "0.1.0",
+  "minDeck": "1.17.4",
+  "permissions": ["chat", "processes", "files"]
+}
