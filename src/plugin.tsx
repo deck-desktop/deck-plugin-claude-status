@@ -1,12 +1,13 @@
 // Claude status: what Claude Code's status line says about a chat's session, as chips in its message
-// box row (the branch, lines changed, the usage limit, the cost, how long it has run), and a band over
+// box row (the branch, lines changed, the usage limit, the cost, how long it has run, how long its prompt
+// cache stays warm), and a band over
 // the box with more on whichever chip was clicked.
 import { useEffect, useState } from "react";
-import { GitBranch, X } from "lucide-react";
+import { Flame, GitBranch, Snowflake, X } from "lucide-react";
 import { send, useChat, type Chat } from "deck-plugin-sdk/chat";
 import { ChatChip, notify } from "deck-plugin-sdk/ui";
 import { branchOf, recentBranches, switchBranch } from "./actions";
-import { duration, resets, tone, usd } from "./format";
+import { cacheLeft, cacheTone, duration, resets, tone, usd } from "./format";
 import { patch, toggleBand, usePaneState } from "./store";
 import { useSettings } from "./settings";
 
@@ -65,7 +66,37 @@ function Chips({ pane, end }: { pane: string; end: boolean }) {
         <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="What this session has cost so far">{usd(c.total_cost_usd)}</ChatChip>
       )}
       {cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
+      {cfg.cache && <CacheChip chat={chat} />}
     </>
+  );
+}
+
+/** What the status line says of the prompt cache. */
+interface PromptCache { expires_at?: number; ttl?: string; recache_tokens_if_cold?: number }
+
+/** How long the session's prompt cache stays warm. Past it, the next message sends the whole context
+ *  again at full price, which on a long session costs far more than the message itself. Ticks every
+ *  15 s, and every second in the last two minutes; only while it is on screen. */
+function CacheChip({ chat }: { chat: Chat }) {
+  const cache = chat.claude?.prompt_cache as PromptCache | undefined;
+  const [now, setNow] = useState(Date.now);
+  const left = cache?.expires_at != null ? cacheLeft(cache.expires_at, now) : null;
+  const every = left && left.ms < 120_000 ? 1000 : 15_000;
+  useEffect(() => {
+    if (cache?.expires_at == null) return;
+    const t = setInterval(() => setNow(Date.now()), every);
+    return () => clearInterval(t);
+  }, [cache?.expires_at, every]);
+  if (cache?.expires_at == null) return null;
+  const tokens = cache.recache_tokens_if_cold ? `${cache.recache_tokens_if_cold.toLocaleString()} tokens` : "the whole context";
+  return left ? (
+    <ChatChip title={`Prompt cache warm for ${left.label} more${cache.ttl ? ` (a ${cache.ttl} cache)` : ""}. A message before then reads the context from the cache; after it, ${tokens} are sent again at full price.`}>
+      <Flame size={12} style={{ color: cacheTone(left.ms) }} /><span>{left.label}</span>
+    </ChatChip>
+  ) : (
+    <ChatChip title={`Prompt cache expired: your next message sends ${tokens} again at full price. A /clear or a new session starts small.`}>
+      <Snowflake size={12} style={{ color: "#93c5fd" }} /><span className="text-text-muted">Cold</span>
+    </ChatChip>
   );
 }
 

@@ -16,6 +16,7 @@ export const settings = [
   { in: IN, key: "limit", title: "Usage limit shown", desc: "The other one is in the band the chip opens.",
     choices: [["five_hour", "Five-hour session"], ["seven_day", "Weekly"]], default: "five_hour" },
   { in: IN, key: "time", title: "Session time", desc: "How long the session has run; a click copies the command that resumes it.", default: true },
+  { in: IN, key: "cache", title: "Prompt cache", desc: "How long the session's prompt cache stays warm. Past it, your next message sends the whole context again at full price.", default: true },
 ] as const;
 
 type Row = (typeof settings)[number];

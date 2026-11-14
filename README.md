@@ -10,6 +10,8 @@ can click:
   each resets.
 - **Cost**: what the session has cost so far.
 - **How long** the session has run. Click it to copy the command that resumes it.
+- **Prompt cache**: how long the session's cache stays warm. Once it runs out ("Cold"), your next message
+  sends the whole context again at full price, so a long session costs more to pick up again.
 
 Settings choose which chips show, which end of the row they sit at, and which limit the usage chip
 shows. The buttons that used to sit beside them (captures and tidy) are the Claude tools plugin now.

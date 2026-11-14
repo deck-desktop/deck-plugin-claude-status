@@ -25,3 +25,16 @@ export function resets(at: number | string | undefined, withDay: boolean): strin
   const t = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   return withDay ? `${DAYS[d.getDay()]} ${t}` : t;
 }
+
+/** Time left on the prompt cache, from its `expires_at` (seconds): "48m", "1h 5m", "40s"; null once
+ *  it has run out, when the next message sends the whole context again at full price. */
+export function cacheLeft(expiresAt: number, now: number): { ms: number; label: string } | null {
+  const ms = expiresAt * 1000 - now;
+  if (!(ms > 0)) return null;
+  const s = Math.floor(ms / 1000);
+  const label = s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+  return { ms, label };
+}
+
+/** The cache chip's colour: green with time to spare, amber under 10 minutes, red under 3. */
+export const cacheTone = (ms: number) => (ms < 180_000 ? "#f87171" : ms < 600_000 ? "#fbbf24" : "#4ade80");

@@ -10,3 +10,5 @@
 - Settings, on its page of Deck's Settings: which chips show, the usage limit shown, the model a tidy uses, and how long captures are kept.
 - The capture, snip and tidy buttons moved to a plugin of their own, Claude tools. The chips sit at the
   right end of the row by default.
+- A prompt cache chip: how long the session's cache stays warm (amber under 10 minutes, red under 3), then
+  "Cold". Its tooltip says how many tokens the next message would send again at full price.

@@ -25,4 +25,16 @@ assert.equal(f.resets(new Date(at).toISOString(), false), "14:05");
 assert.equal(f.resets(undefined, false), "");
 assert.equal(f.resets("nonsense", false), "");
 
+// The cache: time left from expires_at in seconds; nothing once it has run out.
+const t = 1_000_000_000_000;
+assert.deepEqual(f.cacheLeft(t / 1000 + 40, t), { ms: 40_000, label: "40s" });
+assert.equal(f.cacheLeft(t / 1000 + 48 * 60 + 30, t).label, "48m");
+assert.equal(f.cacheLeft(t / 1000 + 3900, t).label, "1h 5m");
+assert.equal(f.cacheLeft(t / 1000, t), null);
+assert.equal(f.cacheLeft(t / 1000 - 5, t), null);
+assert.equal(f.cacheLeft(NaN, t), null);
+assert.equal(f.cacheTone(20 * 60_000), "#4ade80");
+assert.equal(f.cacheTone(5 * 60_000), "#fbbf24");
+assert.equal(f.cacheTone(60_000), "#f87171");
+
 console.log("claude-status: all checks passed");
