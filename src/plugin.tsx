@@ -3,7 +3,7 @@
 // cache stays warm), and a band over
 // the box with more on whichever chip was clicked.
 import { useEffect, useState } from "react";
-import { Flame, GitBranch, Snowflake, X } from "lucide-react";
+import { Flame, GitBranch, Snowflake, Timer, X } from "lucide-react";
 import { send, useChat, type Chat } from "deck-plugin-sdk/chat";
 import { ChatChip, notify } from "deck-plugin-sdk/ui";
 import { branchOf, recentBranches, switchBranch } from "./actions";
@@ -67,7 +67,7 @@ function Chips({ pane, place }: { pane: string; place: Place }) {
       {cfg.cost && c?.total_cost_usd != null && (
         <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="What this session has cost so far">{usd(c.total_cost_usd)}</ChatChip>
       )}
-      {cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
+      {cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it"><Timer size={12} className="text-text-muted" />{duration(c.total_duration_ms)}</ChatChip>}
       {cfg.cache && <CacheChip chat={chat} />}
     </>
   );
@@ -93,11 +93,11 @@ function CacheChip({ chat }: { chat: Chat }) {
   const tokens = cache.recache_tokens_if_cold ? `${cache.recache_tokens_if_cold.toLocaleString()} tokens` : "the whole context";
   return left ? (
     <ChatChip title={`Prompt cache warm for ${left.label} more${cache.ttl ? ` (a ${cache.ttl} cache)` : ""}. A message before then reads the context from the cache; after it, ${tokens} are sent again at full price.`}>
-      <Flame size={12} style={{ color: cacheTone(left.ms) }} /><span>{left.label}</span>
+      <Flame size={12} style={{ color: cacheTone(left.ms) }} /><span className="text-text-muted">cache</span><span>{left.label}</span>
     </ChatChip>
   ) : (
     <ChatChip title={`Prompt cache expired: your next message sends ${tokens} again at full price. A /clear or a new session starts small.`}>
-      <Snowflake size={12} style={{ color: "#93c5fd" }} /><span className="text-text-muted">Cold</span>
+      <Snowflake size={12} style={{ color: "#93c5fd" }} /><span className="text-text-muted">cache cold</span>
     </ChatChip>
   );
 }
