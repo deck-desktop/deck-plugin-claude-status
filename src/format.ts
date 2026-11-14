@@ -4,11 +4,14 @@
 /** 1234 -> "1.2k". */
 export const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
-/** A session's length: "42m", "1h 22m". */
-export function duration(ms: number): string {
-  const minutes = Math.floor(ms / 60000), hours = Math.floor(minutes / 60);
-  return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
-}
+/** Hours and minutes: "42m", "1h 22m", and "1h" on the hour rather than "1h 0m". */
+const hm = (minutes: number) => {
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return h > 0 ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+};
+
+/** A session's length: "42m", "1h 22m", "2h". */
+export const duration = (ms: number) => hm(Math.floor(ms / 60000));
 
 /** The cost so far: "$0.48", or "$0.0123" while it is under a cent's worth of dollars. */
 export const usd = (n: number) => `$${n.toFixed(n < 0.1 ? 4 : 2)}`;
@@ -26,13 +29,13 @@ export function resets(at: number | string | undefined, withDay: boolean): strin
   return withDay ? `${DAYS[d.getDay()]} ${t}` : t;
 }
 
-/** Time left on the prompt cache, from its `expires_at` (seconds): "48m", "1h 5m", "40s"; null once
+/** Time left on the prompt cache, from its `expires_at` (seconds): "48m", "1h 5m", "1h", "40s"; null once
  *  it has run out, when the next message sends the whole context again at full price. */
 export function cacheLeft(expiresAt: number, now: number): { ms: number; label: string } | null {
   const ms = expiresAt * 1000 - now;
   if (!(ms > 0)) return null;
   const s = Math.floor(ms / 1000);
-  const label = s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+  const label = s < 60 ? `${s}s` : hm(Math.floor(s / 60));
   return { ms, label };
 }
 
