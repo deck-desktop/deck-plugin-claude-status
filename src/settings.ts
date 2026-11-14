@@ -8,6 +8,10 @@ import { listen } from "deck-plugin-sdk/event";
 /** On the plugin's own page of Settings (no Deck group is named "chat"). */
 const IN = "chat";
 export const settings = [
+  { in: IN, key: "figuresAt", title: "Where the figures sit", desc: "The branch, lines changed, usage, cost and session time, in the message box's row.",
+    choices: [["start", "Left, after the model"], ["end", "Right, before send"]], default: "start" },
+  { in: IN, key: "buttonsAt", title: "Where the buttons sit", desc: "Capture, snip, recent captures and tidy.",
+    choices: [["start", "Left, after the model"], ["end", "Right, before send"]], default: "start" },
   { in: IN, key: "branch", title: "Branch", desc: "The git branch of Claude's folder, to switch or commit.", default: true },
   { in: IN, key: "lines", title: "Lines changed", desc: "Lines Claude added and removed in the session.", default: true },
   { in: IN, key: "usage", title: "Usage limit", desc: "How much of a usage limit is used.", default: true },

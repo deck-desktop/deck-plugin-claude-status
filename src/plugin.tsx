@@ -30,10 +30,16 @@ function useBranch(cwd: string, working: boolean): string | null {
   return branch;
 }
 
-export function ChatChips({ pane }: { pane: string }) {
+/** The row's two ends (Deck's ChatChips and ChatChipsEnd): the figures and the buttons each sit at
+ *  the end their setting names. */
+export const ChatChips = ({ pane }: { pane: string }) => <Chips pane={pane} end={false} />;
+export const ChatChipsEnd = ({ pane }: { pane: string }) => <Chips pane={pane} end />;
+
+function Chips({ pane, end }: { pane: string; end: boolean }) {
   const chat = useChat(pane), s = usePaneState(pane), box = useBox(pane), cfg = useSettings();
-  // No git run at all while the branch chip is off.
-  const branch = useBranch(cfg.branch ? chat.cwd : "", chat.working);
+  const figures = (cfg.figuresAt === "end") === end, buttons = (cfg.buttonsAt === "end") === end;
+  // No git run at all where the branch chip is not shown.
+  const branch = useBranch(figures && cfg.branch ? chat.cwd : "", chat.working);
   const c = cost(chat), limit = limits(chat)?.[cfg.limit];
   const added = c?.total_lines_added ?? 0, removed = c?.total_lines_removed ?? 0;
   const copyResume = () => {
@@ -45,29 +51,29 @@ export function ChatChips({ pane }: { pane: string }) {
   const capturing = cfg.phone || (cfg.snip && isWindows());
   return (
     <>
-      {cfg.branch && branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
-      {cfg.lines && (added > 0 || removed > 0) && (
+      {figures && cfg.branch && branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
+      {figures && cfg.lines && (added > 0 || removed > 0) && (
         <ChatChip active={s.band === "changes"} onClick={() => toggleBand(pane, "changes")} title="Lines Claude changed in this session. Click to ask Claude to review or commit your uncommitted changes">
           <span style={{ color: "#4ade80" }}>+{added}</span><span style={{ color: "#f87171" }}>−{removed}</span>
         </ChatChip>
       )}
-      {cfg.usage && limit?.used_percentage != null && (
+      {figures && cfg.usage && limit?.used_percentage != null && (
         <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="Your usage limits: click for both, and when they reset">
           <span className="text-text-muted">{cfg.limit === "five_hour" ? "5h" : "Week"}</span>
           <span style={{ color: tone(limit.used_percentage) }}>{limit.used_percentage}%</span>
         </ChatChip>
       )}
-      {cfg.cost && c?.total_cost_usd != null && (
+      {figures && cfg.cost && c?.total_cost_usd != null && (
         <ChatChip active={s.band === "limits"} onClick={() => toggleBand(pane, "limits")} title="What this session has cost so far">{usd(c.total_cost_usd)}</ChatChip>
       )}
-      {cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
-      {cfg.phone && <ChatIconButton onClick={() => void snapPhone(pane)} disabled={s.busy === "capture"} aria-label="Capture the phone's screen" title="Capture the connected phone's screen into the message"><Smartphone size={13} /></ChatIconButton>}
-      {cfg.snip && isWindows() && <ChatIconButton onClick={() => void snip(pane)} disabled={s.busy === "capture"} aria-label="Snip the screen" title="Snip part of the screen into the message"><Scissors size={13} /></ChatIconButton>}
-      {capturing && <ChatIconButton onClick={() => toggleBand(pane, "captures")} aria-label="Recent captures" aria-pressed={s.band === "captures"} title="Recent captures, to add one again"><Images size={13} /></ChatIconButton>}
-      {cfg.tidy && (s.busy === "tidy"
+      {figures && cfg.time && c?.total_duration_ms != null && <ChatChip onClick={copyResume} title="How long this session has run. Click to copy the command that resumes it">{duration(c.total_duration_ms)}</ChatChip>}
+      {buttons && cfg.phone && <ChatIconButton onClick={() => void snapPhone(pane)} disabled={s.busy === "capture"} aria-label="Capture the phone's screen" title="Capture the connected phone's screen into the message"><Smartphone size={13} /></ChatIconButton>}
+      {buttons && cfg.snip && isWindows() && <ChatIconButton onClick={() => void snip(pane)} disabled={s.busy === "capture"} aria-label="Snip the screen" title="Snip part of the screen into the message"><Scissors size={13} /></ChatIconButton>}
+      {buttons && capturing && <ChatIconButton onClick={() => toggleBand(pane, "captures")} aria-label="Recent captures" aria-pressed={s.band === "captures"} title="Recent captures, to add one again"><Images size={13} /></ChatIconButton>}
+      {buttons && cfg.tidy && (s.busy === "tidy"
         ? <ChatIconButton disabled aria-label="Tidying" title="Tidying the draft…"><Loader2 size={13} className="animate-spin" /></ChatIconButton>
         : <ChatIconButton onClick={() => void tidy(pane, chat.cwd)} disabled={!box.text.trim()} aria-label="Tidy the draft" title="Tidy the draft with Claude: clearer, nothing added, not sent"><WandSparkles size={13} /></ChatIconButton>)}
-      {cfg.tidy && s.tidy && box.text === s.tidy.tidied && <ChatIconButton onClick={() => untidy(pane)} aria-label="Undo the tidy" title="Put the draft from before the tidy back"><Undo2 size={13} /></ChatIconButton>}
+      {buttons && cfg.tidy && s.tidy && box.text === s.tidy.tidied && <ChatIconButton onClick={() => untidy(pane)} aria-label="Undo the tidy" title="Put the draft from before the tidy back"><Undo2 size={13} /></ChatIconButton>}
     </>
   );
 }
