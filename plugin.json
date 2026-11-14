@@ -2,7 +2,7 @@
   "id": "claude-status",
   "name": "Claude status",
   "description": "The branch, lines changed, usage limit, cost and time of a Claude chat's session, beside its message box.",
-  "icon": "Gauge",
+  "icon": "icon.svg",
   "color": "#fbbf24",
   "version": "0.1.0",
   "minDeck": "1.17.4",
