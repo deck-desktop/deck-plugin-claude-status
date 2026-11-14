@@ -12,3 +12,4 @@
   right end of the row by default.
 - A prompt cache chip: how long the session's cache stays warm (amber under 10 minutes, red under 3), then
   "Cold". Its tooltip says how many tokens the next message would send again at full price.
+- The chips can sit on a line of their own above the message box, at its right (Where the chips sit).

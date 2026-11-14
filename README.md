@@ -13,7 +13,7 @@ can click:
 - **Prompt cache**: how long the session's cache stays warm. Once it runs out ("Cold"), your next message
   sends the whole context again at full price, so a long session costs more to pick up again.
 
-Settings choose which chips show, which end of the row they sit at, and which limit the usage chip
+Settings choose which chips show, where they sit (either end of the box's row, or a line above the box), and which limit the usage chip
 shows. The buttons that used to sit beside them (captures and tidy) are the Claude tools plugin now.
 
 The figures come from Claude Code's status line, which Deck installs with its hooks for Claude Code, so

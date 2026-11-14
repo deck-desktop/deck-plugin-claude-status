@@ -30,13 +30,15 @@ function useBranch(cwd: string, working: boolean): string | null {
   return branch;
 }
 
-/** The row's two ends (Deck's ChatChips and ChatChipsEnd): the chips sit at the one their setting names. */
-export const ChatChips = ({ pane }: { pane: string }) => <Chips pane={pane} end={false} />;
-export const ChatChipsEnd = ({ pane }: { pane: string }) => <Chips pane={pane} end />;
+/** Where the chips are drawn: the box row's two ends (Deck's ChatChips and ChatChipsEnd), or a line
+ *  above the box (in ChatBand). They show in the one their setting names. */
+type Place = "start" | "end" | "above";
+export const ChatChips = ({ pane }: { pane: string }) => <Chips pane={pane} place="start" />;
+export const ChatChipsEnd = ({ pane }: { pane: string }) => <Chips pane={pane} place="end" />;
 
-function Chips({ pane, end }: { pane: string; end: boolean }) {
+function Chips({ pane, place }: { pane: string; place: Place }) {
   const chat = useChat(pane), s = usePaneState(pane), cfg = useSettings();
-  const here = (cfg.at === "end") === end;
+  const here = cfg.at === place;
   // No git run at all where the branch chip is not shown.
   const branch = useBranch(here && cfg.branch ? chat.cwd : "", chat.working);
   if (!here) return null;
@@ -143,7 +145,19 @@ function Branches({ pane, cwd }: { pane: string; cwd: string }) {
   );
 }
 
+/** Over the box: the chips on a line of their own (when set there, at its right, by the send button),
+ *  then the band a chip opened. */
 export function ChatBand({ pane }: { pane: string }) {
+  const cfg = useSettings();
+  return (
+    <>
+      {cfg.at === "above" && <div className="flex w-full flex-wrap items-center justify-end gap-1.5"><Chips pane={pane} place="above" /></div>}
+      <Band pane={pane} />
+    </>
+  );
+}
+
+function Band({ pane }: { pane: string }) {
   const chat = useChat(pane), s = usePaneState(pane);
   if (!s.band) return null;
   const ask = (text: string) => { void send(pane, text); patch(pane, { band: null }); };

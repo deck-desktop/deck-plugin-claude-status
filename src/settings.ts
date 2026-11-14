@@ -7,8 +7,8 @@ import { listen } from "deck-plugin-sdk/event";
 /** On the plugin's own page of Settings (no Deck group is named "chat"). */
 const IN = "chat";
 export const settings = [
-  { in: IN, key: "at", title: "Where the chips sit", desc: "In the message box's row.",
-    choices: [["start", "Left, after the model"], ["end", "Right, before send"]], default: "end" },
+  { in: IN, key: "at", title: "Where the chips sit", desc: "In the message box's row, or on a line of their own above the box.",
+    choices: [["start", "Left, after the model"], ["end", "Right, before send"], ["above", "Above the box"]], default: "end" },
   { in: IN, key: "branch", title: "Branch", desc: "The git branch of Claude's folder, to switch or commit.", default: true },
   { in: IN, key: "lines", title: "Lines changed", desc: "Lines Claude added and removed in the session.", default: true },
   { in: IN, key: "usage", title: "Usage limit", desc: "How much of a usage limit is used.", default: true },
