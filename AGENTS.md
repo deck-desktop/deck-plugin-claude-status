@@ -73,7 +73,7 @@ survive the tab closing), `Bar`, and `dispose`. At least one; none is required o
   `bg-elev`, `border-subtle`, `var(--accent)`) and Deck's components from `deck-plugin-sdk/ui`, so
   the plugin follows the user's theme.
 - **No error is dropped silently.** A failed save, load or action logs
-  `console.warn("[chat-status] what failed", e)`.
+  `console.warn("[claude-status] what failed", e)`.
 
 ## More
 

@@ -1,5 +1,5 @@
 {
-  "id": "chat-status",
+  "id": "claude-status",
   "name": "Claude status",
   "description": "The branch, lines changed, usage limits, cost and time of a Claude chat, with screen captures and a tidy for your draft.",
   "icon": "Gauge",

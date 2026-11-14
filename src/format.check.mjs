@@ -37,4 +37,4 @@ assert.equal(Buffer.from(f.encodePs("hé"), "base64").toString("utf16le"), "hé"
 assert.equal(f.quote("C:\\a b\\c.png"), "\"C:\\a b\\c.png\"");
 assert.equal(f.quote("C:\\a\\c.png"), "C:\\a\\c.png");
 
-console.log("chat-status: all checks passed");
+console.log("claude-status: all checks passed");

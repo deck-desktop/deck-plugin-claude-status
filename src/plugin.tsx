@@ -46,7 +46,7 @@ function Chips({ pane, end }: { pane: string; end: boolean }) {
     const id = chat.claude?.session_id;
     if (id) void navigator.clipboard.writeText(`claude --resume ${id}`)
       .then(() => notify({ kind: "activity", source: "Claude status", title: "Copied the command that resumes this session", transient: true }))
-      .catch((e) => console.warn("[chat-status] copying failed", e));
+      .catch((e) => console.warn("[claude-status] copying failed", e));
   };
   const capturing = cfg.phone || (cfg.snip && isWindows());
   return (
@@ -108,7 +108,7 @@ function Bar({ name, limit, withDay }: { name: string; limit?: Limit; withDay: b
 
 function Captures({ pane }: { pane: string }) {
   const [list, setList] = useState<Capture[] | null>(null);
-  useEffect(() => { void captures().then(setList).catch((e) => { console.warn("[chat-status] listing captures failed", e); setList([]); }); }, []);
+  useEffect(() => { void captures().then(setList).catch((e) => { console.warn("[claude-status] listing captures failed", e); setList([]); }); }, []);
   if (!list) return <span className="text-text-muted">Loading…</span>;
   if (!list.length) return <span className="text-text-muted">No recent captures. Capture the phone's screen or snip this one with the buttons below.</span>;
   return (
@@ -116,7 +116,7 @@ function Captures({ pane }: { pane: string }) {
       {list.map((c) => (
         <span key={c.path} className="flex items-center">
           <ChatChip onClick={() => { insertInBox(pane, quote(c.path)); patch(pane, { band: null }); }} title={`Add to the message: ${c.path}`}>{c.label}</ChatChip>
-          <button onClick={() => void openFile(c.path).catch((e) => console.warn("[chat-status] opening a capture failed", e))} className="px-1.5 text-[11px] text-text-muted hover:text-text-primary" title="Open it">view</button>
+          <button onClick={() => void openFile(c.path).catch((e) => console.warn("[claude-status] opening a capture failed", e))} className="px-1.5 text-[11px] text-text-muted hover:text-text-primary" title="Open it">view</button>
         </span>
       ))}
     </div>

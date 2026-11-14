@@ -37,7 +37,7 @@ const subs = new Set<() => void>();
 
 const read = () => configRead("settings")
   .then((t) => { values = { ...defaults, ...(t.trim() ? JSON.parse(t) : {}) }; subs.forEach((f) => f()); })
-  .catch((e) => console.warn("[chat-status] settings load failed", e));
+  .catch((e) => console.warn("[claude-status] settings load failed", e));
 void read();
 // config-changed names a plugin's own config "settings" (the shim drops its data/<id>/ folder).
 const unlisten = listen<string[]>("config-changed", (e) => { if (e.payload.includes("settings")) void read(); });

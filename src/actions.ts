@@ -32,7 +32,7 @@ async function capturing(pane: string, run: () => Promise<string | null>) {
     // Clears out the ones older than a day as it lists them.
     void captures().catch(() => {});
   } catch (e) {
-    console.warn("[chat-status] capture failed", e);
+    console.warn("[claude-status] capture failed", e);
     failure("The capture failed", String(e));
   } finally {
     patch(pane, { busy: null });
@@ -70,7 +70,7 @@ export async function captures(): Promise<Capture[]> {
   const files = await fsList(await capturesDir()).catch(() => []);
   const now = Date.now(), KEEP_MS = keepMs();
   for (const f of files) {
-    if (!f.dir && captureLabel(f.name) && now - f.mtimeMs > KEEP_MS) void fsDelete(f.path).catch((e) => console.warn("[chat-status] removing an old capture failed", e));
+    if (!f.dir && captureLabel(f.name) && now - f.mtimeMs > KEEP_MS) void fsDelete(f.path).catch((e) => console.warn("[claude-status] removing an old capture failed", e));
   }
   return files.filter((f) => !f.dir && captureLabel(f.name) && now - f.mtimeMs <= KEEP_MS)
     .sort((a, b) => b.mtimeMs - a.mtimeMs).slice(0, 9)
@@ -108,7 +108,7 @@ export async function tidy(pane: string, cwd: string) {
     setBox(pane, { text: tidied });
     patch(pane, { tidy: { original: draft, tidied } });
   } catch (e) {
-    console.warn("[chat-status] tidy failed", e);
+    console.warn("[claude-status] tidy failed", e);
     failure("The draft could not be tidied", String(e));
   } finally {
     patch(pane, { busy: null });
