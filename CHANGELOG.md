@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 (2026-11-16)
+
+- The branch chip shows the branch of the project Claude works in, also in a workspace of several
+  projects, where the pane's own folder is no repository. As a status line of Claude Code's own does,
+  it follows Claude into the folder it moves to.
+
 ## 1.0.0 (2026-11-14)
 
 - First version: chips in a Claude chat's message box row for the branch, lines changed, usage limits
