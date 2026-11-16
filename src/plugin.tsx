@@ -7,7 +7,7 @@ import { Flame, GitBranch, Snowflake, Timer, X } from "lucide-react";
 import { send, useChat, type Chat } from "deck-plugin-sdk/chat";
 import { ChatChip, notify } from "deck-plugin-sdk/ui";
 import { branchOf, recentBranches, switchBranch } from "./actions";
-import { cacheLeft, cacheTone, duration, resets, tone, usd } from "./format";
+import { BLUE, cacheLeft, cacheTone, duration, GREEN, RED, resets, tone, usd } from "./format";
 import { patch, toggleBand, usePaneState } from "./store";
 import { useSettings } from "./settings";
 
@@ -63,7 +63,7 @@ function Chips({ pane, place }: { pane: string; place: Place }) {
       {cfg.branch && branch && <ChatChip active={s.band === "branch"} onClick={() => toggleBand(pane, "branch")} title="Branch: switch, or commit"><GitBranch size={12} />{branch}</ChatChip>}
       {cfg.lines && (added > 0 || removed > 0) && (
         <ChatChip active={s.band === "changes"} onClick={() => toggleBand(pane, "changes")} title="Lines Claude changed in this session. Click to ask Claude to review or commit your uncommitted changes">
-          <span style={{ color: "#4ade80" }}>+{added}</span><span style={{ color: "#f87171" }}>−{removed}</span>
+          <span style={{ color: GREEN }}>+{added}</span><span style={{ color: RED }}>−{removed}</span>
         </ChatChip>
       )}
       {cfg.usage && limit?.used_percentage != null && (
@@ -105,7 +105,7 @@ function CacheChip({ chat }: { chat: Chat }) {
     </ChatChip>
   ) : (
     <ChatChip title={`Prompt cache expired: your next message sends ${tokens} again at full price. A /clear or a new session starts small.`}>
-      <Snowflake size={12} style={{ color: "#93c5fd" }} /><span className="text-text-muted">cache cold</span>
+      <Snowflake size={12} style={{ color: BLUE }} /><span className="text-text-muted">cache cold</span>
     </ChatChip>
   );
 }

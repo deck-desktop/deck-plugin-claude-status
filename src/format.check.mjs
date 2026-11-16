@@ -14,9 +14,9 @@ assert.equal(f.duration(82 * 60000 + 5000), "1h 22m");
 assert.equal(f.duration(120 * 60000), "2h");
 assert.equal(f.usd(0.0069), "$0.0069");
 assert.equal(f.usd(0.4837), "$0.48");
-assert.equal(f.tone(10), "#4ade80");
-assert.equal(f.tone(50), "#fbbf24");
-assert.equal(f.tone(80), "#f87171");
+assert.equal(f.tone(10), f.GREEN);
+assert.equal(f.tone(50), f.AMBER);
+assert.equal(f.tone(80), f.RED);
 
 // resets_at comes as seconds (Claude Code's status line); an ISO date or ms works too.
 const at = new Date(2026, 10, 19, 14, 5).getTime();
@@ -35,8 +35,8 @@ assert.equal(f.cacheLeft(t / 1000 + 3630, t).label, "1h", "on the hour: 1h, not 
 assert.equal(f.cacheLeft(t / 1000, t), null);
 assert.equal(f.cacheLeft(t / 1000 - 5, t), null);
 assert.equal(f.cacheLeft(NaN, t), null);
-assert.equal(f.cacheTone(20 * 60_000), "#4ade80");
-assert.equal(f.cacheTone(5 * 60_000), "#fbbf24");
-assert.equal(f.cacheTone(60_000), "#f87171");
+assert.equal(f.cacheTone(20 * 60_000), f.GREEN);
+assert.equal(f.cacheTone(5 * 60_000), f.AMBER);
+assert.equal(f.cacheTone(60_000), f.RED);
 
 console.log("claude-status: all checks passed");

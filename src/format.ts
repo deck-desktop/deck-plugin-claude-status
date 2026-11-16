@@ -16,8 +16,12 @@ export const duration = (ms: number) => hm(Math.floor(ms / 60000));
 /** The cost so far: "$0.48", or "$0.0123" while it is under a cent's worth of dollars. */
 export const usd = (n: number) => `$${n.toFixed(n < 0.1 ? 4 : 2)}`;
 
+/** Deck's tones (its theme darkens them on a light background, where the pale dark-theme shades
+ *  hardly showed): green, amber, red, and the blue of a cold cache. */
+export const GREEN = "rgb(var(--tone-green-400))", AMBER = "rgb(var(--tone-amber-400))", RED = "rgb(var(--tone-red-400))", BLUE = "rgb(var(--tone-blue-300))";
+
 /** How full a limit is, as the colour the bar takes: green, then amber past half, red past 80%. */
-export const tone = (pct: number) => (pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#4ade80");
+export const tone = (pct: number) => (pct >= 80 ? RED : pct >= 50 ? AMBER : GREEN);
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** When a limit resets: "14:05", or "Thu 14:05" for the weekly one. `at` is seconds or an ISO date. */
@@ -40,4 +44,4 @@ export function cacheLeft(expiresAt: number, now: number): { ms: number; label: 
 }
 
 /** The cache chip's colour: green with time to spare, amber under 10 minutes, red under 3. */
-export const cacheTone = (ms: number) => (ms < 180_000 ? "#f87171" : ms < 600_000 ? "#fbbf24" : "#4ade80");
+export const cacheTone = (ms: number) => (ms < 180_000 ? RED : ms < 600_000 ? AMBER : GREEN);
