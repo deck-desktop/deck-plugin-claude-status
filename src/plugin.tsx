@@ -11,6 +11,14 @@ import { cacheLeft, cacheTone, duration, resets, tone, usd } from "./format";
 import { patch, toggleBand, usePaneState } from "./store";
 import { useSettings } from "./settings";
 
+/** The folder Claude works in: its status line's, which follows it into one project of a workspace of
+ *  several (a `cd api`), as a status line of Claude Code's own finds the branch; the pane's folder until
+ *  the first status line has come. */
+const folderOf = (chat: Chat) => {
+  const st = chat.claude as { cwd?: string; workspace?: { current_dir?: string } } | null;
+  return st?.workspace?.current_dir || st?.cwd || chat.cwd;
+};
+
 // Its settings, drawn by Deck on its page of Settings; dispose stops their listener before a reload.
 export { dispose, settings } from "./settings";
 
@@ -40,7 +48,7 @@ function Chips({ pane, place }: { pane: string; place: Place }) {
   const chat = useChat(pane), s = usePaneState(pane), cfg = useSettings();
   const here = cfg.at === place;
   // No git run at all where the branch chip is not shown.
-  const branch = useBranch(here && cfg.branch ? chat.cwd : "", chat.working);
+  const branch = useBranch(here && cfg.branch ? folderOf(chat) : "", chat.working);
   if (!here) return null;
   const c = cost(chat), limit = limits(chat)?.[cfg.limit];
   const added = c?.total_lines_added ?? 0, removed = c?.total_lines_removed ?? 0;
@@ -171,7 +179,7 @@ function Band({ pane }: { pane: string }) {
           {cost(chat)?.total_cost_usd != null && <span className="text-text-secondary">This session so far: {usd(cost(chat)!.total_cost_usd!)}</span>}
         </>
       )}
-      {s.band === "branch" && (<><Head pane={pane} title="Branch" /><Branches pane={pane} cwd={chat.cwd} /></>)}
+      {s.band === "branch" && (<><Head pane={pane} title="Branch" /><Branches pane={pane} cwd={folderOf(chat)} /></>)}
       {s.band === "changes" && (
         <>
           <Head pane={pane} title="Uncommitted changes" />
