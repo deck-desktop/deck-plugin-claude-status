@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 (2026-11-16)
+
+- The chips' colours follow Deck's theme: the lines changed, the usage limit and the prompt cache
+  read clearly on a light theme too, where their pale greens, ambers and reds hardly showed.
+
 ## 1.0.1 (2026-11-16)
 
 - The branch chip shows the branch of the project Claude works in, also in a workspace of several
